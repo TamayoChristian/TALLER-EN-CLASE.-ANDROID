@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">AppSuma</string>
+    <string name="numero1">Introdusca el primer numero</string>
+    <string name="numero2">Introdusca el segundo numero</string>
+    <string name="resultado">Resultado</string>
+    <string name="bsumar">Sumar</string>
+    <string name="bsalir">Salir</string>
+</resources>
