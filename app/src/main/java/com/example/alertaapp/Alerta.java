@@ -1,14 +1,19 @@
 package com.example.alertaapp;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TabHost;
 import android.widget.Toast;
 
@@ -16,26 +21,26 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class Alerta extends AppCompatActivity {
 
-    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
+    private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION = 201;
-    private boolean permissionToRecordAccepted = false;
-    private boolean permissionToWriteAccepted = false;
-    private String[] permissions = {Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 202;
 
-    private MediaRecorder recorder = null;
-    private String fileName = null;
+    private String currentPhotoPath;
+    private ImageView photoImageView;
+    private EditText photoNameEditText;
+    private MediaRecorder mediaRecorder;
+    private boolean isRecording = false;
+    private String audioFilePath;
 
-    private EditText phoneEditText;
-    private EditText msmEditText;
-    private Button saveButton;
-    private ImageButton sosButton;
     private TabHost tabHost;
 
     @Override
@@ -44,9 +49,10 @@ public class Alerta extends AppCompatActivity {
         setContentView(R.layout.activity_alerta);
 
         // Verificar y solicitar permisos
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.RECORD_AUDIO}, REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION);
         }
 
         tabHost = findViewById(android.R.id.tabhost);
@@ -56,29 +62,42 @@ public class Alerta extends AppCompatActivity {
         setupTabs();
 
         // Referencias a los elementos de UI
-        phoneEditText = findViewById(R.id.phone_config);
-        msmEditText = findViewById(R.id.msm_config);
-        saveButton = findViewById(R.id.save_config);
-        sosButton = findViewById(R.id.sosButton);
+        photoImageView = findViewById(R.id.photo);
+        photoNameEditText = findViewById(R.id.msm_foto);
+        Button takePhotoButton = findViewById(R.id.btn_take_photo);
+        Button sendPhotoButton = findViewById(R.id.btn_send_photo);
+        ImageButton recordButton = findViewById(R.id.sosButton);  // Botón de grabar
 
-        // Configurar el listener para el botón de guardar
-        saveButton.setOnClickListener(new View.OnClickListener() {
+        // Asegurarse de que el botón de enviar foto esté visible
+        sendPhotoButton.setVisibility(View.VISIBLE);
+
+        // Configurar el listener para el botón de tomar foto
+        takePhotoButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                guardarConfiguracion();
+                dispatchTakePictureIntent();
             }
         });
 
-        // Configurar el listener para el ImageButton
-        sosButton.setOnClickListener(new View.OnClickListener() {
+        // Configurar el listener para el botón de enviar foto
+        sendPhotoButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                grabarAudio();
+                savePhotoToFile();
             }
         });
 
-        // Ruta del archivo de audio
-        fileName = getExternalFilesDir(null).getAbsolutePath() + "/audiorecordtest.3gp";
+        // Configurar el listener para el botón de grabar
+        recordButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isRecording) {
+                    stopRecording();
+                } else {
+                    startRecording();
+                }
+            }
+        });
     }
 
     private void setupTabs() {
@@ -103,86 +122,110 @@ public class Alerta extends AppCompatActivity {
         tabHost.addTab(spec);
     }
 
-    private void guardarConfiguracion() {
-        String telefono = phoneEditText.getText().toString();
-        String mensaje = msmEditText.getText().toString();
-
-        File file = new File(getExternalFilesDir(null), "config.txt");
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.write("Teléfono: " + telefono + "\n");
-            writer.write("Mensaje: " + mensaje + "\n");
-            Toast.makeText(this, "Configuración guardada en: " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Error al guardar la configuración", Toast.LENGTH_SHORT).show();
+    private void dispatchTakePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Asegurarse de que hay una actividad de cámara para manejar el intento
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Crear el archivo donde irá la foto
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+            } catch (IOException ex) {
+                // Error al crear el archivo
+                ex.printStackTrace();
+            }
+            // Continuar solo si el archivo fue creado correctamente
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this, "com.example.alertaapp.fileprovider", photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            }
         }
     }
 
-    private boolean isRecording = false;
+    private File createImageFile() throws IOException {
+        // Crear un nombre de archivo único con la fecha y hora
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefijo */
+                ".jpg",         /* sufijo */
+                storageDir      /* directorio */
+        );
 
-    private void grabarAudio() {
-        if (!permissionToRecordAccepted || !permissionToWriteAccepted) {
-            Toast.makeText(this, "Permisos no concedidos", Toast.LENGTH_SHORT).show();
-            return;
+        // Guardar un archivo: ruta para usar con los Intentos ACTION_VIEW
+        currentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            // Mostrar la imagen capturada en el ImageView
+            File file = new File(currentPhotoPath);
+            if (file.exists()) {
+                photoImageView.setImageURI(Uri.fromFile(file));
+                // Asegurarse de que el botón de enviar foto esté visible
+                findViewById(R.id.btn_send_photo).setVisibility(View.VISIBLE);
+            }
         }
+    }
+
+    private void savePhotoToFile() {
+        String photoName = photoNameEditText.getText().toString();
+        if (currentPhotoPath != null && !photoName.isEmpty()) {
+            File file = new File(currentPhotoPath);
+            File newFile = new File(file.getParent(), photoName + ".jpg");
+            if (file.renameTo(newFile)) {
+                Toast.makeText(this, "Foto guardada como: " + newFile.getAbsolutePath(), Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Error al guardar la foto", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "Nombre de foto vacío o no hay foto capturada", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startRecording() {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String audioFileName = "AUDIO_" + timeStamp + ".3gp";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+        audioFilePath = new File(storageDir, audioFileName).getAbsolutePath();
+
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mediaRecorder.setOutputFile(audioFilePath);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
         try {
-            if (!isRecording) {
-                // Iniciar grabación
-                recorder = new MediaRecorder();
-                recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-                recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-                recorder.setOutputFile(fileName);
-                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-
-                try {
-                    recorder.prepare();
-                    recorder.start();
-                    isRecording = true;
-                    Toast.makeText(this, "Grabando audio...", Toast.LENGTH_SHORT).show();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Toast.makeText(this, "Error al preparar la grabadora", Toast.LENGTH_SHORT).show();
-                } catch (IllegalStateException e) {
-                    e.printStackTrace();
-                    Toast.makeText(this, "Estado ilegal al preparar o iniciar la grabadora", Toast.LENGTH_SHORT).show();
-                    recorder.release();
-                    recorder = null;
-                }
-            } else {
-                // Detener grabación
-                try {
-                    recorder.stop();
-                    Toast.makeText(this, "Grabación detenida. Archivo guardado en: " + fileName, Toast.LENGTH_SHORT).show();
-                } catch (RuntimeException e) {
-                    e.printStackTrace();
-                    Toast.makeText(this, "Error al detener la grabación", Toast.LENGTH_SHORT).show();
-                } finally {
-                    recorder.release();
-                    recorder = null;
-                    isRecording = false;
-                }
-            }
-        } catch (Exception e) {
+            mediaRecorder.prepare();
+            mediaRecorder.start();
+            isRecording = true;
+            Toast.makeText(this, "Grabación iniciada", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
             e.printStackTrace();
-            Toast.makeText(this, "Error inesperado", Toast.LENGTH_SHORT).show();
-            if (recorder != null) {
-                recorder.release();
-                recorder = null;
-                isRecording = false;
-            }
+            Toast.makeText(this, "Error al iniciar la grabación", Toast.LENGTH_SHORT).show();
         }
     }
 
-
+    private void stopRecording() {
+        mediaRecorder.stop();
+        mediaRecorder.release();
+        mediaRecorder = null;
+        isRecording = false;
+        Toast.makeText(this, "Grabación guardada en: " + audioFilePath, Toast.LENGTH_SHORT).show();
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
-            permissionToRecordAccepted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
-            permissionToWriteAccepted = grantResults[1] == PackageManager.PERMISSION_GRANTED;
-            if (!permissionToRecordAccepted || !permissionToWriteAccepted) {
+        if (requestCode == REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permiso concedido
+            } else {
                 Toast.makeText(this, "Permisos necesarios no concedidos. La aplicación se cerrará.", Toast.LENGTH_SHORT).show();
                 finish();
             }
