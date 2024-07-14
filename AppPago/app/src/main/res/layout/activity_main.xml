@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/imageView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:layout_width="410dp"
+        android:layout_height="61dp"
+        android:layout_marginTop="50dp"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="0dp">
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Pago de la propina al mozo" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/txtPropina"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Propina" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="339dp"
+        android:layout_height="601dp"
+        android:layout_marginTop="112dp"
+        android:orientation="vertical"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="36dp">
+
+        <LinearLayout
+            android:layout_width="398dp"
+            android:layout_height="67dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/textView2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="TOTAL" />
+
+            <EditText
+                android:id="@+id/edt_Total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:inputType="text"
+                android:text="Total:" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="414dp"
+            android:layout_height="60dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/textView3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Numero:" />
+
+            <EditText
+                android:id="@+id/edt_Numero"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:inputType="text"
+                android:text="Name" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="342dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/textView4"
+                android:layout_width="349dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Porcentaje" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="355dp"
+            android:layout_height="154dp"
+            android:orientation="horizontal">
+
+            <RadioGroup
+                android:id="@+id/rgroup"
+                android:layout_width="114dp"
+                android:layout_height="wrap_content">
+
+                <RadioButton
+                    android:id="@+id/r15"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="15%" />
+
+                <RadioButton
+                    android:id="@+id/r20"
+                    android:layout_width="109dp"
+                    android:layout_height="wrap_content"
+                    android:text="20%" />
+
+                <RadioButton
+                    android:id="@+id/rotros"
+                    android:layout_width="112dp"
+                    android:layout_height="wrap_content"
+                    android:text="otros" />
+
+            </RadioGroup>
+
+            <EditText
+                android:id="@+id/edt_otros"
+                android:layout_width="117dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ems="10"
+                android:inputType="text" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/txtPropina"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Propina" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="308dp"
+            android:layout_height="119dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_calcular"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Calcular" />
+
+            <Button
+                android:id="@+id/btn_salir"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Salir" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
